@@ -51,7 +51,7 @@ func server() {
 	mux := http.NewServeMux()
 	// rutas
 	mux.Handle("/", http.HandlerFunc(handler))
-	mux.Handle("/login", http.HandleFunc(authentication.Login))
+	mux.Handle("/login", http.HandlerFunc(authentication.Login))
 
 	srv := &http.Server{Addr: ":10443", Handler: mux}
 

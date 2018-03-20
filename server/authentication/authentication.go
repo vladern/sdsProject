@@ -7,13 +7,13 @@ import (
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
+	"github.com/sdsProject/server/models"
 
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"time"
-
-	"github.com/sdsProject/server/src/models"
+	// "github.com/sdsProject/server/src/models"
 )
 
 var (
