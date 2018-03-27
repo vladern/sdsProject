@@ -22,24 +22,24 @@ var (
 )
 
 func init() {
-	privateBytes, err := ioutil.ReadFile("./private.rsa")
+	privateBytes, err := ioutil.ReadFile("./certificates/private.rsa")
 	if err != nil {
-		log.Fatal("No se pudo leer el archivo privado")
+		log.Fatal("No se pudo leer el archivo privado: " + err.Error())
 	}
 
-	publicBytes, err := ioutil.ReadFile("./public.rsa.pub")
+	publicBytes, err := ioutil.ReadFile("./certificates/public.rsa.pub")
 	if err != nil {
-		log.Fatal("No se pudo leer el archivo publico")
+		log.Fatal("No se pudo leer el archivo publico: " + err.Error())
 	}
 
 	privateKey, err = jwt.ParseRSAPrivateKeyFromPEM(privateBytes)
 	if err != nil {
-		log.Fatal("No se pudo hacer el parse a privatekey")
+		log.Fatal("No se pudo hacer el parse a privatekey: " + err.Error())
 	}
 
 	publicKey, err = jwt.ParseRSAPublicKeyFromPEM(publicBytes)
 	if err != nil {
-		log.Fatal("No se pudo hacer el parse a privatekey")
+		log.Fatal("No se pudo hacer el parse a privatekey: " + err.Error())
 	}
 }
 
@@ -61,12 +61,8 @@ func GenerateJWT(user models.User) string {
 }
 
 func Login(w http.ResponseWriter, r *http.Request) {
-	var user models.User
-	err := json.NewDecoder(r.Body).Decode(&user)
-	if err != nil {
-		fmt.Fprintln(w, "Error al leer el usuario %s", err)
-		return
-	}
+	r.ParseForm()
+	user := models.User{Name: r.Form.Get("user"), Password: r.Form.Get("password")}
 
 	if user.Name == "alexys" && user.Password == "alexys" {
 		user.Password = ""
