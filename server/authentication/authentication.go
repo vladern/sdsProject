@@ -5,6 +5,8 @@ import (
 	"io/ioutil"
 	"log"
 
+	"github.com/sdsProject/server/fileReader"
+
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 	"github.com/sdsProject/server/models"
@@ -13,7 +15,6 @@ import (
 	"fmt"
 	"net/http"
 	"time"
-	// "github.com/sdsProject/server/src/models"
 )
 
 var (
@@ -64,6 +65,10 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	user := models.User{Name: r.Form.Get("user"), Password: r.Form.Get("password")}
 
+	// añado el usuario a la bbdd
+	fileReader.AddUserToDataBase(user)
+	// leo todos los usuarios de la base de datos
+	//fmt.Println(fileReader.GetUsersFromDataBase())
 	if user.Name == "alexys" && user.Password == "alexys" {
 		user.Password = ""
 		user.Role = "admin"
@@ -81,7 +86,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		w.Write(jsonResult)
 	} else {
 		w.WriteHeader(http.StatusForbidden)
-		fmt.Fprintln(w, "Uusario o clave no válidos")
+		fmt.Fprintln(w, "Usario o clave no válidos")
 	}
 }
 
