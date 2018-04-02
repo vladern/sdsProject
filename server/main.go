@@ -49,7 +49,7 @@ func server() {
 	signal.Notify(stopChan, os.Interrupt)
 
 	mux := http.NewServeMux()
-	// rutas
+	// Rutas
 	mux.Handle("/", http.HandlerFunc(handler))
 	mux.Handle("/login", http.HandlerFunc(authentication.Login))
 

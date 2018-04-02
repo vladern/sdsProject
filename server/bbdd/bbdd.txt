@@ -1,1 +1,1 @@
-[{"name":"vladyslav","lastname":"","email":"","password":"vlamosAtomos"},{"name":"yuli","lastname":"","email":"","password":"gagarin"}]
+[{"name":"vladyslav","lastname":"","email":"vlad@gmail.com","password":"secret"},{"name":"yuli","lastname":"","email":"","password":"gagarin"}]

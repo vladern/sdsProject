@@ -35,16 +35,16 @@ func client() {
 	client := &http.Client{Transport: tr}
 
 	// # Login
-	var user string
+	var email string
 	var password string
-	fmt.Print("Introduce tu usuario: ")
-	fmt.Scanf("%s\n", &user)
+	fmt.Print("Introduce tu email: ")
+	fmt.Scanf("%s\n", &email)
 	fmt.Print("Introduce tu contraseña: ")
 	fmt.Scanf("%s\n", &password)
 
 	// ** ejemplo de registro
 	data := url.Values{}           // estructura para contener los valores
-	data.Set("user", user)         // comando (string)
+	data.Set("email", email)       // comando (string)
 	data.Set("password", password) // usuario (string)
 
 	r, err := client.PostForm("https://localhost:10443/login", data) // enviamos por POST

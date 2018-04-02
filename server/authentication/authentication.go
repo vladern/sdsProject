@@ -63,15 +63,9 @@ func GenerateJWT(user models.User) string {
 
 func Login(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	user := models.User{Name: r.Form.Get("user"), Password: r.Form.Get("password")}
+	user := models.User{Email: r.Form.Get("email"), Password: r.Form.Get("password")}
 
-	// añado el usuario a la bbdd
-	fileReader.AddUserToDataBase(user)
-	// leo todos los usuarios de la base de datos
-	//fmt.Println(fileReader.GetUsersFromDataBase())
-	if user.Name == "alexys" && user.Password == "alexys" {
-		user.Password = ""
-		user.Role = "admin"
+	if ValidateUserAndPassword(user) {
 
 		token := GenerateJWT(user)
 		result := models.ResponseToken{token}
@@ -90,6 +84,7 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ValidateToken validamos el token que nos llega, si lo hemos emitido nosotros o no
 func ValidateToken(w http.ResponseWriter, r *http.Request) {
 	token, err := request.ParseFromRequestWithClaims(r, request.OAuth2Extractor, &models.Claim{}, func(token *jwt.Token) (interface{}, error) {
 		return publicKey, nil
@@ -123,4 +118,20 @@ func ValidateToken(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		fmt.Fprintln(w, "Su token no es válido")
 	}
+}
+
+//ValidateUserAndPassword validamos que el usuario y contraseña que nos han pasado es existe en la bbdd
+func ValidateUserAndPassword(user models.User) bool {
+
+	// recupero todos los usuarios de la base de datos
+	users := fileReader.GetUsersFromDataBase()
+	// recorremos todos los usuarios comprobando que coincidan su email y su contraseña
+	for _, element := range users {
+		fmt.Println("usuario0: " + element.Email + " password: " + element.Password)
+		fmt.Println("usuario1: " + user.Email + " password: " + user.Password)
+		if user.Email == element.Email && user.Password == element.Password {
+			return true
+		}
+	}
+	return false
 }

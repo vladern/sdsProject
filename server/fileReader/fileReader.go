@@ -25,6 +25,7 @@ func GetUsersFromDataBase() []models.User {
 	return users
 }
 
+// AddUserToDataBase añade un nuevo usuario a nuestra base de datos
 func AddUserToDataBase(user models.User) {
 	users := GetUsersFromDataBase()
 	users = append(users, user)
