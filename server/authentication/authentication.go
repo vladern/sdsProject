@@ -6,6 +6,7 @@ import (
 	"log"
 
 	"github.com/sdsProject/server/fileReader"
+	"github.com/sdsProject/server/sendmail"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
@@ -61,6 +62,7 @@ func GenerateJWT(user models.User) string {
 	return result
 }
 
+// Login se valida que el usuario existe en nuestro sistema
 func Login(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
 	user := models.User{Email: r.Form.Get("email"), Password: r.Form.Get("password")}
@@ -81,6 +83,33 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	} else {
 		w.WriteHeader(http.StatusForbidden)
 		fmt.Fprintln(w, "Usario o clave no válidos")
+	}
+}
+
+// Signin se registra un nuevo usuario en el sistema
+func Signin(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	// parseamos todos los datos recibidos
+	user := models.User{Name: r.Form.Get("name"), Lastname: r.Form.Get("lastname"), Email: r.Form.Get("email"), Password: r.Form.Get("password")}
+	user.Role = "not validated user"
+	if user.Name != "" && user.Lastname != "" && user.Email != "" && user.Password != "" {
+
+		w.WriteHeader(http.StatusAccepted)
+		w.Header().Set("Content-Type", "text")
+		fmt.Fprintln(w, "Ok, revisa tú correo electrónico para validar la cuenta")
+		// genero el token
+		token := GenerateJWT(user)
+		// envio el correo
+		err := sendmail.SendMail(user.Name, user.Email, token)
+		// si no se produce ningún error a la hora de enviar el correo se añade el usuario
+		if err == nil {
+			// se añade el usuario a la base de datos
+			fileReader.AddUserToDataBase(user)
+		}
+
+	} else {
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprintln(w, "Format exception, el formato no es adecuado o faltan datos")
 	}
 }
 
@@ -127,8 +156,6 @@ func ValidateUserAndPassword(user models.User) bool {
 	users := fileReader.GetUsersFromDataBase()
 	// recorremos todos los usuarios comprobando que coincidan su email y su contraseña
 	for _, element := range users {
-		fmt.Println("usuario0: " + element.Email + " password: " + element.Password)
-		fmt.Println("usuario1: " + user.Email + " password: " + user.Password)
 		if user.Email == element.Email && user.Password == element.Password {
 			return true
 		}

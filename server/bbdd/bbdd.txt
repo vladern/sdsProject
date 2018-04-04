@@ -1,1 +1,1 @@
-[{"name":"vladyslav","lastname":"","email":"vlad@gmail.com","password":"secret"},{"name":"yuli","lastname":"","email":"","password":"gagarin"}]
+[{"name":"vladyslav","lastname":"kuchmenko","email":"vk18@alu.ua.es","password":"secret","role":"user"},{"name":"vlad","lastname":"kuch","email":"vladys.3234@gmail.com","password":"secretaforever","role":"not validated user"},{"name":"vlad","lastname":"kuch","email":"vladys.3234@gmail.com","password":"secreta","role":"not validated user"}]
