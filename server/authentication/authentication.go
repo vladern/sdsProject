@@ -47,10 +47,10 @@ func init() {
 
 func GenerateJWT(user models.User) string {
 	claims := models.Claim{
-		User: user,
+		User: models.User{Email: user.Email},
 		StandardClaims: jwt.StandardClaims{
 			ExpiresAt: time.Now().Add(time.Hour * 1).Unix(),
-			Issuer:    "Taller de sábado",
+			Issuer:    "BackUPSecure",
 		},
 	}
 
@@ -68,7 +68,6 @@ func Login(w http.ResponseWriter, r *http.Request) {
 	user := models.User{Email: r.Form.Get("email"), Password: r.Form.Get("password")}
 
 	if ValidateUserAndPassword(user) {
-
 		token := GenerateJWT(user)
 		result := models.ResponseToken{token}
 		jsonResult, err := json.Marshal(result)
@@ -118,7 +117,6 @@ func ValidateToken(w http.ResponseWriter, r *http.Request) {
 	token, err := request.ParseFromRequestWithClaims(r, request.OAuth2Extractor, &models.Claim{}, func(token *jwt.Token) (interface{}, error) {
 		return publicKey, nil
 	})
-
 	if err != nil {
 		switch err.(type) {
 		case *jwt.ValidationError:
@@ -149,6 +147,37 @@ func ValidateToken(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// ValidateEmail validamos el token del email
+func ValidateEmail(w http.ResponseWriter, r *http.Request) {
+
+	token, _ := r.URL.Query()["token"]
+	claims, ok := extractClaims(token[0])
+
+	if ok {
+		userToUpload, userExist := fileReader.GetUserFromDataBase(claims.User.Email)
+		userToUpload.Role = "validated user"
+		if userExist {
+			fileReader.UpdateUserIntoDataBase(userToUpload)
+			w.WriteHeader(http.StatusAccepted)
+		}
+		// devuelve una página web
+		body, err := ioutil.ReadFile("templates/validateEmailOk.html")
+		if err != nil {
+			fmt.Println("Error al leer el template" + err.Error())
+		}
+		fmt.Fprint(w, string(body))
+	} else {
+		w.WriteHeader(http.StatusUnauthorized)
+		fmt.Println("Su token no es válido")
+		// devuelve una pagina web
+		body, err := ioutil.ReadFile("templates/validateEmailFail.html")
+		if err != nil {
+			fmt.Println("Error al leer el template" + err.Error())
+		}
+		fmt.Fprint(w, string(body))
+	}
+}
+
 //ValidateUserAndPassword validamos que el usuario y contraseña que nos han pasado es existe en la bbdd
 func ValidateUserAndPassword(user models.User) bool {
 
@@ -161,4 +190,24 @@ func ValidateUserAndPassword(user models.User) bool {
 		}
 	}
 	return false
+}
+
+func extractClaims(tokenStr string) (*models.Claim, bool) {
+
+	token, err := jwt.ParseWithClaims(tokenStr, &models.Claim{}, func(token *jwt.Token) (interface{}, error) {
+		return publicKey, nil
+	})
+
+	if err != nil {
+		log.Print("Error parsing tokenStr:" + err.Error())
+		return &models.Claim{}, false
+	}
+
+	claims, ok := token.Claims.(*models.Claim)
+	if ok && token.Valid {
+		return claims, true
+	} else {
+		log.Printf("Invalid JWT Token")
+		return &models.Claim{}, false
+	}
 }

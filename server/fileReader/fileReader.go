@@ -25,14 +25,46 @@ func GetUsersFromDataBase() []models.User {
 	return users
 }
 
+// GetUserFromDataBase consigue un usuario dado el email del usuario
+func GetUserFromDataBase(email string) (models.User, bool) {
+	users := GetUsersFromDataBase()
+	for _, user := range users {
+		if user.Email == email {
+			return user, true
+		}
+	}
+	return models.User{}, false
+}
+
 // AddUserToDataBase añade un nuevo usuario a nuestra base de datos
 func AddUserToDataBase(user models.User) {
 	users := GetUsersFromDataBase()
 	users = append(users, user)
-	fmt.Println(users)
+	writeInDataBase(users)
+}
+
+// UpdateUserIntoDataBase actualiza la información de un usuario dado
+func UpdateUserIntoDataBase(user models.User) {
+	DeleteUserFromDataBase(user)
+	AddUserToDataBase(user)
+}
+
+// DeleteUserFromDataBase borra un usuario de la base de datos
+func DeleteUserFromDataBase(user models.User) {
+	users := GetUsersFromDataBase()
+	for i := 0; i < len(users); i++ {
+		if users[i].Email == user.Email {
+			users = append(users[:i], users[i+1:]...)
+			i-- // form the remove item index to start iterate next item
+		}
+	}
+	writeInDataBase(users)
+}
+
+// guardo los datos de los usuarios en la bbdd
+func writeInDataBase(users []models.User) {
 	// transformo el array en json
 	b, err := json.Marshal(users)
-	fmt.Println(string(b))
 	if err != nil {
 		fmt.Printf("Error: %s", err)
 		return
