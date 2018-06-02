@@ -1,1 +1,1 @@
-[{"name":"vladernn","lastname":"vladernn","email":"vladys.3234@gmail.com","password":"micontraseñasecreta7589","role":"validated user"}]
+[{"name":"vladyslav","lastname":"kuchmenko","email":"vladys.3234@gmail.com","password":"1AoMhhbwW8K/Kx0L6vIQdRxvKAlfkTj1SSUyG+6bU+b9+rLnm5eLpIka/zzwd3ESo10ALXvm9St9S5CRTU1TMQ==","role":"validated user","sal":"spDdryEuGzeNulzOBgZH","FilesInfo":[{"name":"qr-code1.png","id":"15TNcvrDRRSolUPNeC6VdTS0w8S"}]}]

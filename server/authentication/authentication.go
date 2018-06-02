@@ -2,17 +2,19 @@ package authentication
 
 import (
 	"crypto/rsa"
+	"crypto/sha512"
 	"io/ioutil"
 	"log"
 
 	"github.com/sdsProject/server/fileReader"
+	"github.com/sdsProject/server/salt"
 	"github.com/sdsProject/server/sendmail"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/dgrijalva/jwt-go/request"
 	"github.com/sdsProject/server/models"
 
-	"encoding/json"
+	"encoding/base64"
 	"fmt"
 	"net/http"
 	"time"
@@ -21,6 +23,7 @@ import (
 var (
 	privateKey *rsa.PrivateKey
 	publicKey  *rsa.PublicKey
+	otpKey     map[string]models.Otp
 )
 
 func init() {
@@ -43,8 +46,11 @@ func init() {
 	if err != nil {
 		log.Fatal("No se pudo hacer el parse a privatekey: " + err.Error())
 	}
+
+	otpKey = make(map[string]models.Otp)
 }
 
+// GenerateJWT genera un token jwt
 func GenerateJWT(user models.User) string {
 	claims := models.Claim{
 		User: models.User{Email: user.Email},
@@ -65,23 +71,63 @@ func GenerateJWT(user models.User) string {
 // Login se valida que el usuario existe en nuestro sistema
 func Login(w http.ResponseWriter, r *http.Request) {
 	r.ParseForm()
-	user := models.User{Email: r.Form.Get("email"), Password: r.Form.Get("password")}
 
+	email := r.Form.Get("email")
+	// recogemos los datos mandados por el cliente
+	user := models.User{Email: email, Password: r.Form.Get("password")}
+
+	// validamos que el usuario y el password coincidan con los de la base de datos
 	if ValidateUserAndPassword(user) {
-		token := GenerateJWT(user)
-		result := models.ResponseToken{token}
-		jsonResult, err := json.Marshal(result)
-		if err != nil {
-			fmt.Fprintln(w, "Error al generar el json")
-			return
-		}
+		// genero la key de otp y le asigno el tiempo máximo de duración en segundos
+		key := models.GenerateOTP()
 
+		// añado la key a en memoria
+		otpKey[email] = key
+		// obtengo el usuario
+		user, Ok := fileReader.GetUserFromDataBase(email)
+		if !Ok {
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprintln(w, "Algo ha ido mal, vuelve a intentarlo")
+		}
+		// envio el email de doble autentificación al usuario
+		error := sendmail.SendMail(user.Name, user.Email, key.Pin, "./templates/doubleAuth.html")
+		if error != nil {
+			w.WriteHeader(http.StatusForbidden)
+			fmt.Fprintln(w, "Usario o clave no válidos")
+		}
 		w.WriteHeader(http.StatusOK)
-		w.Header().Set("Content-Type", "application/json")
-		w.Write(jsonResult)
+		w.Write([]byte("Revisa tu correo electrónico para validar el pin de verificación"))
 	} else {
 		w.WriteHeader(http.StatusForbidden)
 		fmt.Fprintln(w, "Usario o clave no válidos")
+	}
+}
+
+// ValidateOTPKey valida el pin del doble factor de autentificación
+func ValidateOTPKey(w http.ResponseWriter, r *http.Request) {
+	r.ParseForm()
+	var key models.Otp
+	email := r.Form.Get("email")
+	// recogemos los datos mandados por el cliente
+	key = otpKey[email]
+	passcode := r.Form.Get("pin")
+	fmt.Println(passcode)
+	// valido el pin
+	valid := models.ValidateOTP(passcode, key, 200)
+	if !valid {
+		w.WriteHeader(http.StatusForbidden)
+		fmt.Fprintln(w, "El pin es incorecto")
+	} else {
+		user, ok := fileReader.GetUserFromDataBase(email)
+		if !ok {
+			fmt.Fprintln(w, "No se ha podido obtener el usuario de la bbdd")
+		} else {
+			// borro el otpKey del diccionario
+			delete(otpKey, email)
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte(GenerateJWT(user)))
+		}
+
 	}
 }
 
@@ -99,9 +145,12 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 		// genero el token
 		token := GenerateJWT(user)
 		// envio el correo
-		err := sendmail.SendMail(user.Name, user.Email, token)
+		err := sendmail.SendMail(user.Name, user.Email, token, "./sendmail/template.html")
 		// si no se produce ningún error a la hora de enviar el correo se añade el usuario
 		if err == nil {
+			// genero la sal y hasheo el password junto con la sal
+			user.Sal = salt.RandStringBytesMask(20)
+			user.Password = encryptPassword(user.Password + user.Sal)
 			// se añade el usuario a la base de datos
 			fileReader.AddUserToDataBase(user)
 		}
@@ -151,7 +200,7 @@ func ValidateToken(w http.ResponseWriter, r *http.Request) {
 func ValidateEmail(w http.ResponseWriter, r *http.Request) {
 
 	token, _ := r.URL.Query()["token"]
-	claims, ok := extractClaims(token[0])
+	claims, ok := ExtractClaims(token[0])
 
 	if ok {
 		userToUpload, userExist := fileReader.GetUserFromDataBase(claims.User.Email)
@@ -178,21 +227,27 @@ func ValidateEmail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-//ValidateUserAndPassword validamos que el usuario y contraseña que nos han pasado es existe en la bbdd
+//ValidateUserAndPassword validamos que el usuario y contraseña que nos han pasado es existente y valida en la bbdd
 func ValidateUserAndPassword(user models.User) bool {
 
-	// recupero todos los usuarios de la base de datos
-	users := fileReader.GetUsersFromDataBase()
-	// recorremos todos los usuarios comprobando que coincidan su email y su contraseña
-	for _, element := range users {
-		if user.Email == element.Email && user.Password == element.Password {
+	// recupero al usuario con email que me han pasado pero de base de datos
+	userFromDB, ok := fileReader.GetUserFromDataBase(user.Email)
+	// compruebo que dicho usuario existe en la base de datos
+	if ok {
+		// compruebo que las contraseñas conincidan en la base de datos
+		if userFromDB.Password == encryptPassword(user.Password+userFromDB.Sal) {
 			return true
+		} else {
+			return false
 		}
+	} else {
+		return false
 	}
-	return false
+
 }
 
-func extractClaims(tokenStr string) (*models.Claim, bool) {
+// ExtractClaims devuelve las Claims del token y si dicho token es valido o no
+func ExtractClaims(tokenStr string) (*models.Claim, bool) {
 
 	token, err := jwt.ParseWithClaims(tokenStr, &models.Claim{}, func(token *jwt.Token) (interface{}, error) {
 		return publicKey, nil
@@ -210,4 +265,18 @@ func extractClaims(tokenStr string) (*models.Claim, bool) {
 		log.Printf("Invalid JWT Token")
 		return &models.Claim{}, false
 	}
+}
+
+// función para decodificar de string a []bytes (Base64)
+func decode64(s string) []byte {
+	b, err := base64.StdEncoding.DecodeString(s) // recupera el formato original
+	if err != nil {
+		log.Panic(err)
+	}
+	return b // devolvemos los datos originales
+}
+
+func encryptPassword(password string) string {
+	h := sha512.Sum512([]byte(password))
+	return base64.StdEncoding.EncodeToString(h[:])
 }

@@ -38,9 +38,10 @@ func GetUserFromDataBase(email string) (models.User, bool) {
 
 // AddUserToDataBase añade un nuevo usuario a nuestra base de datos
 func AddUserToDataBase(user models.User) {
+
 	users := GetUsersFromDataBase()
 	users = append(users, user)
-	writeInDataBase(users)
+	writeUsersInDataBase(users)
 }
 
 // UpdateUserIntoDataBase actualiza la información de un usuario dado
@@ -58,11 +59,11 @@ func DeleteUserFromDataBase(user models.User) {
 			i-- // form the remove item index to start iterate next item
 		}
 	}
-	writeInDataBase(users)
+	writeUsersInDataBase(users)
 }
 
 // guardo los datos de los usuarios en la bbdd
-func writeInDataBase(users []models.User) {
+func writeUsersInDataBase(users []models.User) {
 	// transformo el array en json
 	b, err := json.Marshal(users)
 	if err != nil {
@@ -78,4 +79,14 @@ func writeInDataBase(users []models.User) {
 	fmt.Fprint(f, string(b))
 	// cierro el stream
 	f.Close()
+}
+
+// GetFileIDFromUser pasando el nombre del archivo y el usuario devuelve el ID 'único' del archivo
+func GetFileIDFromUser(name string, user models.User) (string, bool) {
+	for i := 0; i < len(user.FilesInfo); i++ {
+		if user.FilesInfo[i].Name == name {
+			return user.FilesInfo[i].ID, true
+		}
+	}
+	return "", false
 }

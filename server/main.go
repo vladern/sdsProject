@@ -2,9 +2,7 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
-	"io"
 	"log"
 	"net/http"
 	"os"
@@ -12,6 +10,7 @@ import (
 	"time"
 
 	"github.com/sdsProject/server/authentication"
+	"github.com/sdsProject/server/fileManagement"
 )
 
 func main() {
@@ -23,20 +22,6 @@ func chk(e error) {
 	if e != nil {
 		panic(e)
 	}
-}
-
-// respuesta del servidor
-type resp struct {
-	Ok  bool   // true -> correcto, false -> error
-	Msg string // mensaje adicional
-}
-
-// función para escribir una respuesta del servidor
-func Response(w io.Writer, ok bool, msg string) {
-	r := resp{Ok: ok, Msg: msg}    // formateamos respuesta
-	rJSON, err := json.Marshal(&r) // codificamos en JSON
-	chk(err)                       // comprobamos error
-	w.Write(rJSON)                 // escribimos el JSON resultante
 }
 
 /***
@@ -53,6 +38,11 @@ func server() {
 	mux.Handle("/login", http.HandlerFunc(authentication.Login))
 	mux.Handle("/signin", http.HandlerFunc(authentication.Signin))
 	mux.Handle("/verificarMail/", http.HandlerFunc(authentication.ValidateEmail))
+	mux.Handle("/verficarPin", http.HandlerFunc(authentication.ValidateOTPKey))
+	mux.Handle("/upload", http.HandlerFunc(fileManagement.Upload))
+	mux.Handle("/download/", http.HandlerFunc(fileManagement.Download))
+	mux.Handle("/listFiles", http.HandlerFunc(fileManagement.ListFiles))
+	mux.Handle("/delete/", http.HandlerFunc(fileManagement.DeleteFile))
 
 	srv := &http.Server{Addr: ":10443", Handler: mux}
 
@@ -71,16 +61,4 @@ func server() {
 	srv.Shutdown(ctx)
 
 	log.Println("Servidor detenido correctamente")
-}
-
-func handler(w http.ResponseWriter, req *http.Request) {
-	req.ParseForm()                              // es necesario parsear el formulario
-	w.Header().Set("Content-Type", "text/plain") // cabecera estándar
-
-	switch req.Form.Get("cmd") { // comprobamos comando desde el cliente
-	case "hola": // ** registro
-		Response(w, true, "Hola "+req.Form.Get("mensaje"))
-	default:
-		Response(w, false, "Comando inválido")
-	}
 }

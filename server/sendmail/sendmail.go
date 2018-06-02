@@ -21,10 +21,14 @@ func checkError(err error) {
 
 // SendMail recibe el nombre y el mail del destinatario ademas del token de verificación
 // y envia el correo al destinatario para comprobar que el correo existe
-func SendMail(name string, toMail string, token string) (err error) {
+func SendMail(name string, toMail string, token string, templateURL string) (err error) {
 
 	var devolver error
 
+	fmt.Println("Peta")
+	fmt.Println(name + " " + toMail + " " + token + " " + templateURL)
+
+	// en el futuro habrá que meter esto en variables de entorno o algo así
 	from := mail.Address{"Vladyslav Kuchmenko", "vladernn@gmail.com"}
 	to := mail.Address{name, toMail}
 	subject := "Confirmación correo sistema backup seguro en GO"
@@ -43,7 +47,7 @@ func SendMail(name string, toMail string, token string) (err error) {
 		mensaje += fmt.Sprintf("%s: %s\r\n", k, v)
 	}
 
-	t, err := template.ParseFiles("./sendmail/template.html")
+	t, err := template.ParseFiles(templateURL)
 	devolver = err
 	checkError(err)
 
