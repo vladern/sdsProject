@@ -59,7 +59,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		user, existUser := fileReader.GetUserFromDataBase(claims.Email)
 		if !existUser {
 			http.Error(w, "Invalid token, Unauthorized", 401)
-			log.Fatal("User do not exist: " + claims.Email + " func Upload()")
+			log.Println("User do not exist: " + claims.Email + " func Upload()")
 			return
 		}
 
@@ -67,7 +67,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%v", handler.Header)
 		f, err := os.OpenFile("./files/"+Filename.String(), os.O_WRONLY|os.O_CREATE, 0666)
 		if err != nil {
-			log.Fatal("Write error uploading file: " + err.Error())
+			log.Println("Write error uploading file: " + err.Error())
 			return
 		}
 		defer f.Close()
@@ -93,7 +93,7 @@ func Download(writer http.ResponseWriter, request *http.Request) {
 	if Filename == "" {
 		//Get not set, send a 400 bad request
 		http.Error(writer, "Get 'file' not specified in url.", 400)
-		log.Fatal("Get 'file' not specified in url while downloading")
+		log.Println("Get 'file' not specified in url while downloading")
 		return
 	}
 
@@ -104,7 +104,7 @@ func Download(writer http.ResponseWriter, request *http.Request) {
 	user, existUser := fileReader.GetUserFromDataBase(claims.Email)
 	if !existUser {
 		http.Error(writer, "Invalid token, Unauthorized", 401)
-		log.Fatal("User do not exist in BBDD, while downloading")
+		log.Println("User do not exist in BBDD, while downloading")
 		return
 	}
 
@@ -113,7 +113,7 @@ func Download(writer http.ResponseWriter, request *http.Request) {
 	if !found {
 		//File not found, send 404
 		http.Error(writer, "File not found.", 404)
-		log.Fatal("File ID not found in BBDD while downloading")
+		log.Println("File ID not found in BBDD while downloading")
 		return
 	}
 
@@ -123,7 +123,7 @@ func Download(writer http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		//File not found, send 404
 		http.Error(writer, "File not found.", 404)
-		log.Fatal("File not found in memory while downloading")
+		log.Println("File not found in memory while downloading")
 		return
 	}
 
@@ -165,7 +165,7 @@ func ListFiles(w http.ResponseWriter, r *http.Request) {
 	user, ok := fileReader.GetUserFromDataBase(claims.Email)
 	if !ok {
 		http.Error(w, "User dosn't exist, Unauthorized", 401)
-		log.Fatal("User do not found in BBDD wile Listing Files")
+		log.Println("User do not found in BBDD wile Listing Files")
 		return
 	} else {
 		w.WriteHeader(http.StatusOK)

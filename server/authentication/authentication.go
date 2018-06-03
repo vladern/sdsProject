@@ -29,22 +29,22 @@ var (
 func init() {
 	privateBytes, err := ioutil.ReadFile("./certificates/private.rsa")
 	if err != nil {
-		log.Fatal("No se pudo leer el archivo privado: " + err.Error())
+		log.Println("No se pudo leer el archivo privado: " + err.Error())
 	}
 
 	publicBytes, err := ioutil.ReadFile("./certificates/public.rsa.pub")
 	if err != nil {
-		log.Fatal("No se pudo leer el archivo publico: " + err.Error())
+		log.Println("No se pudo leer el archivo publico: " + err.Error())
 	}
 
 	privateKey, err = jwt.ParseRSAPrivateKeyFromPEM(privateBytes)
 	if err != nil {
-		log.Fatal("No se pudo hacer el parse a privatekey: " + err.Error())
+		log.Println("No se pudo hacer el parse a privatekey: " + err.Error())
 	}
 
 	publicKey, err = jwt.ParseRSAPublicKeyFromPEM(publicBytes)
 	if err != nil {
-		log.Fatal("No se pudo hacer el parse a privatekey: " + err.Error())
+		log.Println("No se pudo hacer el parse a privatekey: " + err.Error())
 	}
 
 	otpKey = make(map[string]models.Otp)
@@ -68,7 +68,7 @@ func GenerateJWT(user models.User) string {
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, claims)
 	result, err := token.SignedString(privateKey)
 	if err != nil {
-		log.Fatal("No se pudo firmar el token")
+		log.Println("No se pudo firmar el token")
 	}
 	return result
 }
@@ -92,21 +92,21 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		user, Ok := fileReader.GetUserFromDataBase(email)
 		if !Ok {
 			w.WriteHeader(http.StatusForbidden)
-			log.Fatal("Usuario no encontrado: " + email)
+			log.Println("Usuario no encontrado: " + email)
 			fmt.Fprintln(w, "Algo ha ido mal, vuelve a intentarlo")
 		}
 		// envio el email de doble autentificación al usuario
 		error := sendmail.SendMail(user.Name, user.Email, key.Pin, "./templates/doubleAuth.html")
 		if error != nil {
 			w.WriteHeader(http.StatusForbidden)
-			log.Fatal("Usuario o clave no válidos: " + email)
+			log.Println("Usuario o clave no válidos: " + email)
 			fmt.Fprintln(w, "Usario o clave no válidos")
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Revisa tu correo electrónico para validar el pin de verificación"))
 	} else {
 		w.WriteHeader(http.StatusForbidden)
-		log.Fatal("Usuario o clave no válidos: " + email)
+		log.Println("Usuario o clave no válidos: " + email)
 		fmt.Fprintln(w, "Usario o clave no válidos")
 	}
 }
@@ -124,12 +124,12 @@ func ValidateOTPKey(w http.ResponseWriter, r *http.Request) {
 	valid := models.ValidateOTP(passcode, key, 200)
 	if !valid {
 		w.WriteHeader(http.StatusForbidden)
-		log.Fatal("El pin es incorrecto: " + email)
+		log.Println("El pin es incorrecto: " + email)
 		fmt.Fprintln(w, "El pin es incorecto")
 	} else {
 		user, ok := fileReader.GetUserFromDataBase(email)
 		if !ok {
-			log.Fatal("No se ha podido obtener el usuario de la bbdd: " + email)
+			log.Println("No se ha podido obtener el usuario de la bbdd: " + email)
 			fmt.Fprintln(w, "No se ha podido obtener el usuario de la bbdd")
 		} else {
 			// borro el otpKey del diccionario
@@ -169,7 +169,7 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 
 	} else {
 		w.WriteHeader(http.StatusForbidden)
-		log.Fatal("Format exception, el formato no es adecuado o faltan datos:" + user.Email)
+		log.Println("Format exception, el formato no es adecuado o faltan datos:" + user.Email)
 		fmt.Fprintln(w, "Format exception, el formato no es adecuado o faltan datos")
 	}
 }
@@ -191,16 +191,16 @@ func ValidateEmail(w http.ResponseWriter, r *http.Request) {
 		// devuelve una página web
 		body, err := ioutil.ReadFile("templates/validateEmailOk.html")
 		if err != nil {
-			log.Fatal("Error al leer el template" + err.Error())
+			log.Println("Error al leer el template" + err.Error())
 		}
 		fmt.Fprint(w, string(body))
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
-		log.Fatal("Su token no es válido")
+		log.Println("Su token no es válido")
 		// devuelve una pagina web
 		body, err := ioutil.ReadFile("templates/validateEmailFail.html")
 		if err != nil {
-			log.Fatal("Error al leer el template: " + claims.Email + " : Error: " + err.Error())
+			log.Println("Error al leer el template: " + claims.Email + " : Error: " + err.Error())
 		}
 		log.Println("Email validado: " + claims.Email)
 		fmt.Fprint(w, string(body))
@@ -219,11 +219,11 @@ func ValidateUserAndPassword(user models.User) bool {
 			log.Println("Constraseña valida: " + user.Email)
 			return true
 		} else {
-			log.Fatal("Constraseña no valida: " + user.Email)
+			log.Println("Constraseña no valida: " + user.Email)
 			return false
 		}
 	} else {
-		log.Fatal("Usuario no existe: " + user.Email)
+		log.Println("Usuario no existe: " + user.Email)
 		return false
 	}
 

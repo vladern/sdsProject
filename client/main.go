@@ -105,11 +105,14 @@ func login() {
 	data.Set("password", hashBase64) // usuario (string)
 
 	r, err := client.PostForm("https://localhost:10443/login", data) // enviamos por POST
-	chk(err)
+	if err != nil {
+		color.Red("Error de validación")
+		return
+	}
 
-	if r.Status != string(http.StatusForbidden) {
+	if r.StatusCode == 200 {
 		// pido eque introduzca el pin
-		fmt.Print("Introduce el pin que se te ha enviado por correo: ")
+		color.Cyan("Introduce el pin que se te ha enviado por correo: ")
 		fmt.Scanf("%s\n", &pin)
 
 		data1 := url.Values{}

@@ -5,17 +5,24 @@ import (
 	"crypto/tls"
 	"fmt"
 	"html/template"
+	"log"
 	"net/mail"
 	"net/smtp"
+	"os"
 )
 
 type SHA256 struct {
 	Token string
 }
 
+func init() {
+	file, _ := os.OpenFile("./logs/logrus.log", os.O_CREATE|os.O_WRONLY, 0666)
+	log.SetOutput(file)
+}
+
 func checkError(err error) {
 	if err != nil {
-		fmt.Println("Se produjo un error: " + err.Error())
+		log.Println("Error sending mail: " + err.Error())
 	}
 }
 
@@ -24,9 +31,6 @@ func checkError(err error) {
 func SendMail(name string, toMail string, token string, templateURL string) (err error) {
 
 	var devolver error
-
-	fmt.Println("Peta")
-	fmt.Println(name + " " + toMail + " " + token + " " + templateURL)
 
 	// en el futuro habrá que meter esto en variables de entorno o algo así
 	from := mail.Address{"Vladyslav Kuchmenko", "vladernn@gmail.com"}
