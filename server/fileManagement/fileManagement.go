@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"html/template"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"strconv"
@@ -18,6 +19,11 @@ import (
 	"github.com/sdsProject/server/authentication"
 	"github.com/segmentio/ksuid"
 )
+
+func init() {
+	file, _ := os.OpenFile("./logs/logrus.log", os.O_CREATE|os.O_WRONLY, 0666)
+	log.SetOutput(file)
+}
 
 // Upload recibe y guarda el archivo que ha mandado el cliente
 func Upload(w http.ResponseWriter, r *http.Request) {
@@ -46,13 +52,14 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		defer file.Close()
 
 		// log
-		fmt.Println("User: " + claims.Email + " uploaded file: " + handler.Filename)
+		log.Println("User: " + claims.Email + " uploaded file: " + handler.Filename)
 
 		// genero el ID 'único' para el archivo
 		Filename := ksuid.New()
 		user, existUser := fileReader.GetUserFromDataBase(claims.Email)
 		if !existUser {
 			http.Error(w, "Invalid token, Unauthorized", 401)
+			log.Fatal("User do not exist: " + claims.Email + " func Upload()")
 			return
 		}
 
@@ -60,7 +67,7 @@ func Upload(w http.ResponseWriter, r *http.Request) {
 		fmt.Fprintf(w, "%v", handler.Header)
 		f, err := os.OpenFile("./files/"+Filename.String(), os.O_WRONLY|os.O_CREATE, 0666)
 		if err != nil {
-			fmt.Println(err)
+			log.Fatal("Write error uploading file: " + err.Error())
 			return
 		}
 		defer f.Close()
@@ -86,16 +93,18 @@ func Download(writer http.ResponseWriter, request *http.Request) {
 	if Filename == "" {
 		//Get not set, send a 400 bad request
 		http.Error(writer, "Get 'file' not specified in url.", 400)
+		log.Fatal("Get 'file' not specified in url while downloading")
 		return
 	}
 
 	// log
-	fmt.Println("User: " + claims.Email + " downloaded file: " + Filename)
+	log.Println("User: " + claims.Email + " downloaded file: " + Filename)
 
 	// busco el usuario en la BBDD
 	user, existUser := fileReader.GetUserFromDataBase(claims.Email)
 	if !existUser {
 		http.Error(writer, "Invalid token, Unauthorized", 401)
+		log.Fatal("User do not exist in BBDD, while downloading")
 		return
 	}
 
@@ -104,6 +113,7 @@ func Download(writer http.ResponseWriter, request *http.Request) {
 	if !found {
 		//File not found, send 404
 		http.Error(writer, "File not found.", 404)
+		log.Fatal("File ID not found in BBDD while downloading")
 		return
 	}
 
@@ -113,6 +123,7 @@ func Download(writer http.ResponseWriter, request *http.Request) {
 	if err != nil {
 		//File not found, send 404
 		http.Error(writer, "File not found.", 404)
+		log.Fatal("File not found in memory while downloading")
 		return
 	}
 
@@ -154,10 +165,12 @@ func ListFiles(w http.ResponseWriter, r *http.Request) {
 	user, ok := fileReader.GetUserFromDataBase(claims.Email)
 	if !ok {
 		http.Error(w, "User dosn't exist, Unauthorized", 401)
+		log.Fatal("User do not found in BBDD wile Listing Files")
 		return
 	} else {
 		w.WriteHeader(http.StatusOK)
 		json, _ := json.Marshal(user.FilesInfo)
+		log.Println("Listed Files : " + user.Email)
 		w.Write(json)
 	}
 }

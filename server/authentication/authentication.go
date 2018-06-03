@@ -5,13 +5,13 @@ import (
 	"crypto/sha512"
 	"io/ioutil"
 	"log"
+	"os"
 
 	"github.com/sdsProject/server/fileReader"
 	"github.com/sdsProject/server/salt"
 	"github.com/sdsProject/server/sendmail"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"github.com/dgrijalva/jwt-go/request"
 	"github.com/sdsProject/server/models"
 
 	"encoding/base64"
@@ -48,6 +48,11 @@ func init() {
 	}
 
 	otpKey = make(map[string]models.Otp)
+
+	file, _ := os.OpenFile("./logs/logrus.log", os.O_CREATE|os.O_WRONLY, 0666)
+
+	log.SetOutput(file)
+
 }
 
 // GenerateJWT genera un token jwt
@@ -87,18 +92,21 @@ func Login(w http.ResponseWriter, r *http.Request) {
 		user, Ok := fileReader.GetUserFromDataBase(email)
 		if !Ok {
 			w.WriteHeader(http.StatusForbidden)
+			log.Fatal("Usuario no encontrado: " + email)
 			fmt.Fprintln(w, "Algo ha ido mal, vuelve a intentarlo")
 		}
 		// envio el email de doble autentificación al usuario
 		error := sendmail.SendMail(user.Name, user.Email, key.Pin, "./templates/doubleAuth.html")
 		if error != nil {
 			w.WriteHeader(http.StatusForbidden)
+			log.Fatal("Usuario o clave no válidos: " + email)
 			fmt.Fprintln(w, "Usario o clave no válidos")
 		}
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Revisa tu correo electrónico para validar el pin de verificación"))
 	} else {
 		w.WriteHeader(http.StatusForbidden)
+		log.Fatal("Usuario o clave no válidos: " + email)
 		fmt.Fprintln(w, "Usario o clave no válidos")
 	}
 }
@@ -116,16 +124,19 @@ func ValidateOTPKey(w http.ResponseWriter, r *http.Request) {
 	valid := models.ValidateOTP(passcode, key, 200)
 	if !valid {
 		w.WriteHeader(http.StatusForbidden)
+		log.Fatal("El pin es incorrecto: " + email)
 		fmt.Fprintln(w, "El pin es incorecto")
 	} else {
 		user, ok := fileReader.GetUserFromDataBase(email)
 		if !ok {
+			log.Fatal("No se ha podido obtener el usuario de la bbdd: " + email)
 			fmt.Fprintln(w, "No se ha podido obtener el usuario de la bbdd")
 		} else {
 			// borro el otpKey del diccionario
 			delete(otpKey, email)
 			w.WriteHeader(http.StatusOK)
 			w.Write([]byte(GenerateJWT(user)))
+			log.Println("Se ha validado el OTPKey: " + email)
 		}
 
 	}
@@ -153,46 +164,13 @@ func Signin(w http.ResponseWriter, r *http.Request) {
 			user.Password = encryptPassword(user.Password + user.Sal)
 			// se añade el usuario a la base de datos
 			fileReader.AddUserToDataBase(user)
+			log.Println("Usuario Registrado: " + user.Email)
 		}
 
 	} else {
 		w.WriteHeader(http.StatusForbidden)
+		log.Fatal("Format exception, el formato no es adecuado o faltan datos:" + user.Email)
 		fmt.Fprintln(w, "Format exception, el formato no es adecuado o faltan datos")
-	}
-}
-
-// ValidateToken validamos el token que nos llega, si lo hemos emitido nosotros o no
-func ValidateToken(w http.ResponseWriter, r *http.Request) {
-	token, err := request.ParseFromRequestWithClaims(r, request.OAuth2Extractor, &models.Claim{}, func(token *jwt.Token) (interface{}, error) {
-		return publicKey, nil
-	})
-	if err != nil {
-		switch err.(type) {
-		case *jwt.ValidationError:
-			vErr := err.(*jwt.ValidationError)
-			switch vErr.Errors {
-			case jwt.ValidationErrorExpired:
-				fmt.Fprintln(w, "Su token ha expirado")
-				return
-			case jwt.ValidationErrorSignatureInvalid:
-				fmt.Fprintln(w, "La firma del token no coincide")
-				return
-			default:
-				fmt.Fprintln(w, "Su token no es válido")
-				return
-			}
-		default:
-			fmt.Fprintln(w, "Su token no es válido")
-			return
-		}
-	}
-
-	if token.Valid {
-		w.WriteHeader(http.StatusAccepted)
-		fmt.Fprintln(w, "Bienvenido al sistema")
-	} else {
-		w.WriteHeader(http.StatusUnauthorized)
-		fmt.Fprintln(w, "Su token no es válido")
 	}
 }
 
@@ -208,21 +186,23 @@ func ValidateEmail(w http.ResponseWriter, r *http.Request) {
 		if userExist {
 			fileReader.UpdateUserIntoDataBase(userToUpload)
 			w.WriteHeader(http.StatusAccepted)
+			log.Println("Email verificado: " + claims.Email)
 		}
 		// devuelve una página web
 		body, err := ioutil.ReadFile("templates/validateEmailOk.html")
 		if err != nil {
-			fmt.Println("Error al leer el template" + err.Error())
+			log.Fatal("Error al leer el template" + err.Error())
 		}
 		fmt.Fprint(w, string(body))
 	} else {
 		w.WriteHeader(http.StatusUnauthorized)
-		fmt.Println("Su token no es válido")
+		log.Fatal("Su token no es válido")
 		// devuelve una pagina web
 		body, err := ioutil.ReadFile("templates/validateEmailFail.html")
 		if err != nil {
-			fmt.Println("Error al leer el template" + err.Error())
+			log.Fatal("Error al leer el template: " + claims.Email + " : Error: " + err.Error())
 		}
+		log.Println("Email validado: " + claims.Email)
 		fmt.Fprint(w, string(body))
 	}
 }
@@ -236,11 +216,14 @@ func ValidateUserAndPassword(user models.User) bool {
 	if ok {
 		// compruebo que las contraseñas conincidan en la base de datos
 		if userFromDB.Password == encryptPassword(user.Password+userFromDB.Sal) {
+			log.Println("Constraseña valida: " + user.Email)
 			return true
 		} else {
+			log.Fatal("Constraseña no valida: " + user.Email)
 			return false
 		}
 	} else {
+		log.Fatal("Usuario no existe: " + user.Email)
 		return false
 	}
 
@@ -260,6 +243,7 @@ func ExtractClaims(tokenStr string) (*models.Claim, bool) {
 
 	claims, ok := token.Claims.(*models.Claim)
 	if ok && token.Valid {
+		log.Println("Token is valid: " + claims.Email)
 		return claims, true
 	} else {
 		log.Printf("Invalid JWT Token")

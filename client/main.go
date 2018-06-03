@@ -17,6 +17,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/fatih/color"
 	"github.com/howeyc/gopass"
 
 	"github.com/sdsProject/client/cryptoVladernn"
@@ -29,6 +30,7 @@ var (
 // función para comprobar errores (ahorra escritura)
 func chk(e error) {
 	if e != nil {
+		color.Red(e.Error())
 		panic(e)
 	}
 }
@@ -53,7 +55,7 @@ func client() {
 	finalizado = false
 	for !finalizado {
 		finalizado = true
-		fmt.Println("-----------MENÚ-------------")
+		color.Cyan("-----------MENÚ-------------")
 		fmt.Println("1.Login")
 		fmt.Println("2.Sign In")
 		fmt.Print("Que quieres hacer ?:(1 o 2) ")
@@ -64,7 +66,7 @@ func client() {
 		} else if election == "2" {
 			signin()
 		} else {
-			fmt.Println("Opción no válida, vuelve a intentarlo")
+			color.Red("Opción no válida, vuelve a intentarlo")
 			finalizado = false
 		}
 	}
@@ -72,7 +74,7 @@ func client() {
 
 func uploadFile() {
 	var election string
-	fmt.Println("-----------Subida del archivo seguro-------------")
+	color.Cyan("-----------Subida del archivo seguro-------------")
 	fmt.Print("Ruta del archivo que quieras subir: ")
 	fmt.Scanf("%s\n", &election)
 
@@ -146,7 +148,7 @@ func login() {
 				fmt.Scanf("%s\n", &election)
 				deleteFileFromURL("https://localhost:10443/delete/?file=" + election)
 			} else {
-				fmt.Println("Opción no valida, elige una opción valida")
+				color.Red("Opción no valida, elige una opción valida")
 			}
 		}
 	}
@@ -209,7 +211,7 @@ func postFile(filename string, targetURL string, token string) error {
 	// this step is very important
 	fileWriter, err := bodyWriter.CreateFormFile("uploadfile", filename)
 	if err != nil {
-		fmt.Println("error writing to buffer")
+		color.Red("Error writing to buffer")
 		return err
 	}
 
@@ -224,7 +226,7 @@ func postFile(filename string, targetURL string, token string) error {
 	// open file handle
 	fh, err := os.Open(filename + ".enc")
 	if err != nil {
-		fmt.Println("error opening file")
+		color.Red("Error opening file")
 		return err
 	}
 	defer fh.Close()
@@ -232,7 +234,7 @@ func postFile(filename string, targetURL string, token string) error {
 	//iocopy
 	_, err = io.Copy(fileWriter, fh)
 	if err != nil {
-		fmt.Println("error coping the file")
+		color.Red("Error coping the file")
 		return err
 	}
 
@@ -250,13 +252,13 @@ func postFile(filename string, targetURL string, token string) error {
 	// reponse
 	resp, err := client.Do(req)
 	if err != nil {
-		fmt.Println("error posting the file")
+		color.Red("Error posting the file")
 		return err
 	}
 	defer resp.Body.Close()
 	respBody, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		fmt.Println("error reading body")
+		color.Red("Error reading body")
 		return err
 	}
 	fmt.Print("Status: ")
@@ -276,12 +278,12 @@ func downloadFromURL(url string) {
 
 	tokens := strings.Split(url, "/")
 	fileName := strings.Split(tokens[len(tokens)-1], "=")[1]
-	fmt.Println("Downloading", url, "to", fileName)
+	color.Green("Downloading", url, "to", fileName)
 
 	// TODO: check file existence first with io.IsExist
 	output, err := os.Create(fileName + ".enc")
 	if err != nil {
-		fmt.Println("Error while creating", fileName, "-", err)
+		color.Red("Error while creating", fileName, "-", err)
 		return
 	}
 	defer output.Close()
@@ -296,14 +298,14 @@ func downloadFromURL(url string) {
 	// reponse
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Println("error posting the file: " + err.Error())
+		color.Red("Error posting the file: " + err.Error())
 		return
 	}
 	defer response.Body.Close()
 
 	n, err := io.Copy(output, response.Body)
 	if err != nil {
-		fmt.Println("Error while downloading", url, "-", err)
+		color.Red("Error while downloading", url, "-", err)
 		return
 	}
 
@@ -314,8 +316,7 @@ func downloadFromURL(url string) {
 	sha256Pass := createHash(string(password))
 	// creo el archivo desencriptado
 	decryptFile(fileName, sha256Pass)
-
-	fmt.Println(n, "bytes downloaded.")
+	color.Green(string(n) + " bytes downloaded !")
 }
 
 func getListOfFiles() {
@@ -336,7 +337,7 @@ func getListOfFiles() {
 	// reponse
 	response, err := client.Do(req)
 	if err != nil {
-		fmt.Println("Request error: " + err.Error())
+		color.Red("Request error: " + err.Error())
 		return
 	}
 	defer response.Body.Close()
@@ -349,9 +350,9 @@ func getListOfFiles() {
 	unmarchalErr := json.Unmarshal(body, &list)
 	chk(unmarchalErr)
 	// imprimo por pantalla la lista
-	fmt.Println("------------Lista de tus archivos-------------")
+	color.Cyan("------------Lista de tus archivos-------------")
 	for i := 0; i < len(list); i++ {
-		fmt.Println("- " + list[i].Name)
+		color.Green("- " + list[i].Name)
 	}
 
 }
@@ -380,10 +381,10 @@ func deleteFileFromURL(path string) {
 
 	respBody, err := ioutil.ReadAll(response.Body)
 	if err != nil {
-		fmt.Println("error reading body")
+		color.Red("Error reading body")
 		return
 	}
-	fmt.Println(string(respBody))
+	color.Green(string(respBody))
 }
 
 // crea el hash en sha256
