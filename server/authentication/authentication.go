@@ -119,7 +119,6 @@ func ValidateOTPKey(w http.ResponseWriter, r *http.Request) {
 	// recogemos los datos mandados por el cliente
 	key = otpKey[email]
 	passcode := r.Form.Get("pin")
-	fmt.Println(passcode)
 	// valido el pin
 	valid := models.ValidateOTP(passcode, key, 200)
 	if !valid {

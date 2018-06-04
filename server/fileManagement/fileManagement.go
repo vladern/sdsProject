@@ -177,7 +177,6 @@ func ListFiles(w http.ResponseWriter, r *http.Request) {
 
 // DeleteFile borra el archivo de un usuario guardado en el servidor
 func DeleteFile(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Deleting file")
 	// extract claims and verify the token
 	claims, auth := authentication.ExtractClaims(r.Header.Get("Authorization"))
 	if !auth {
@@ -217,5 +216,6 @@ func DeleteFile(w http.ResponseWriter, r *http.Request) {
 
 		// return the response
 		w.Write([]byte("File was deleted !!"))
+		log.Println("A file was deleted: " + fileID)
 	}
 }
